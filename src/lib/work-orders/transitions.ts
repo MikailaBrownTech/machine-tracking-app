@@ -18,6 +18,4 @@ export function nextStatuses(from: WorkOrderStatus): WorkOrderStatus[] {
   return [...transitions[from]];
 }
 
-export const workOrderStatuses = Object.keys(
-  transitions,
-) as WorkOrderStatus[];
+export const workOrderStatuses = Object.keys(transitions) as WorkOrderStatus[];

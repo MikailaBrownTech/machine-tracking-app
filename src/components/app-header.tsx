@@ -34,6 +34,9 @@ export function AppHeader() {
         <Link href="/assets" className="flex h-12 items-center text-base">
           Assets
         </Link>
+        <Link href="/work-orders" className="flex h-12 items-center text-base">
+          Work orders
+        </Link>
       </nav>
       <Suspense fallback={<div className="h-12" aria-hidden />}>
         <UserMenu />

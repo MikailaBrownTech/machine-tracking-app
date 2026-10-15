@@ -19,7 +19,10 @@ export default function Home() {
       <Suspense fallback={<p className="text-base">&nbsp;</p>}>
         <SignedInAs />
       </Suspense>
-      <Link href="/assets" className={buttonVariants({ size: "lg", className: "h-14 text-lg" })}>
+      <Link
+        href="/assets"
+        className={buttonVariants({ size: "lg", className: "h-14 text-lg" })}
+      >
         Go to assets
       </Link>
     </main>

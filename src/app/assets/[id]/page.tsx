@@ -4,6 +4,12 @@ import { Suspense } from "react";
 import { AssetStatusBadge } from "@/components/asset-status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { getAsset } from "@/db/queries/assets";
+import {
+  PriorityBadge,
+  WorkOrderStatusBadge,
+} from "@/components/work-order-badges";
+import { listWorkOrdersForAsset } from "@/db/queries/work-orders";
+import { formatDateTime } from "@/lib/format";
 import { assetQrDataUrl } from "@/lib/qr";
 import { can, requireUser } from "@/lib/session";
 import { cn } from "cn";
@@ -16,7 +22,10 @@ async function AssetDetails({
   const { id } = await params;
   const asset = await getAsset(id);
   if (!asset) notFound();
-  const qr = await assetQrDataUrl(asset.id);
+  const [qr, workOrders] = await Promise.all([
+    assetQrDataUrl(asset.id),
+    listWorkOrdersForAsset(asset.id),
+  ]);
   const writer = can(user.role, "write");
   const retired = asset.status === "retired";
   const toggle = setAssetStatus.bind(
@@ -77,9 +86,37 @@ async function AssetDetails({
       )}
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">Work orders</h2>
-        <p className="text-base text-muted-foreground">
-          Work orders arrive in Step 5.
-        </p>
+        {writer && !retired && (
+          <Link
+            href={`/assets/${asset.id}/work-orders/new`}
+            className={cn(buttonVariants(), "h-12 text-base")}
+          >
+            New work order
+          </Link>
+        )}
+        {workOrders.length === 0 ? (
+          <p className="text-base text-muted-foreground">No work orders yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {workOrders.map((wo) => (
+              <li key={wo.id}>
+                <Link
+                  href={`/work-orders/${wo.id}`}
+                  className="flex min-h-11 flex-col gap-1 rounded-lg border p-3 text-base"
+                >
+                  <span className="font-medium">{wo.title}</span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <WorkOrderStatusBadge status={wo.status} />
+                    <PriorityBadge priority={wo.priority} />
+                    <span className="text-sm text-muted-foreground">
+                      {formatDateTime(wo.createdAt)}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </>
   );
