@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { Suspense } from "react";
-import { SignOutButton } from "@/components/sign-out-button";
+import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/session";
 
 async function SignedInAs() {
@@ -18,7 +19,9 @@ export default function Home() {
       <Suspense fallback={<p className="text-base">&nbsp;</p>}>
         <SignedInAs />
       </Suspense>
-      <SignOutButton />
+      <Link href="/assets" className={buttonVariants({ size: "lg", className: "h-14 text-lg" })}>
+        Go to assets
+      </Link>
     </main>
   );
 }
