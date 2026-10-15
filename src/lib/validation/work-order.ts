@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { workOrderPriority, workOrderStatus } from "@/db/schema";
+import { workOrderPriority, workOrderStatus } from "../../db/schema.ts";
 
 export const createWorkOrderSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),

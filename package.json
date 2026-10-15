@@ -19,6 +19,7 @@
     "screenshots": "node scripts/screenshots.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@base-ui/react": "^1.9.0",
     "@neondatabase/serverless": "^1.2.0",
     "better-auth": "^1.7.10",
