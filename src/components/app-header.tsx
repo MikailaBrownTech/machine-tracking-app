@@ -1,46 +1,61 @@
+import { Wrench } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { SignOutButton } from "@/components/sign-out-button";
-import { Badge } from "@/components/ui/badge";
+import { ChromeGate, BottomTabs, DesktopNav } from "@/components/nav";
+import { UserMenuClient } from "@/components/user-menu";
 import { getSession } from "@/lib/session";
 
 async function UserMenu() {
   const user = await getSession();
   if (!user) {
     return (
-      <Link href="/sign-in" className="flex h-12 items-center text-base">
+      <Link
+        href="/sign-in"
+        className="flex h-tap items-center rounded-lg px-3 text-base font-medium"
+      >
         Sign in
       </Link>
     );
   }
+  return <UserMenuClient email={user.email} role={user.role} />;
+}
+
+export function Brand() {
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="min-w-0 max-w-[9rem] truncate text-sm sm:max-w-xs">
-        {user.email}
+    <Link href="/" className="flex h-tap items-center gap-2.5">
+      <span
+        aria-hidden
+        className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground"
+      >
+        <Wrench className="size-5" />
       </span>
-      <Badge variant="secondary">{user.role}</Badge>
-      <SignOutButton className="h-11 px-3 text-sm" />
-    </div>
+      <span className="text-lg font-bold tracking-tight">Maintenance</span>
+    </Link>
   );
 }
 
 export function AppHeader() {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-x-4 border-b px-4 print:hidden">
-      <nav className="flex items-center gap-4">
-        <Link href="/" className="flex h-12 items-center text-base">
-          Home
-        </Link>
-        <Link href="/assets" className="flex h-12 items-center text-base">
-          Assets
-        </Link>
-        <Link href="/work-orders" className="flex h-12 items-center text-base">
-          Work orders
-        </Link>
-      </nav>
-      <Suspense fallback={<div className="h-12" aria-hidden />}>
-        <UserMenu />
-      </Suspense>
-    </header>
+    <ChromeGate>
+      <header className="sticky top-0 z-30 border-b bg-card print:hidden">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4">
+          <div className="flex items-center gap-6">
+            <Brand />
+            <DesktopNav />
+          </div>
+          <Suspense fallback={<div className="size-tap" aria-hidden />}>
+            <UserMenu />
+          </Suspense>
+        </div>
+      </header>
+    </ChromeGate>
+  );
+}
+
+export function AppTabs() {
+  return (
+    <ChromeGate>
+      <BottomTabs />
+    </ChromeGate>
   );
 }

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import type { AssetFormState } from "@/app/assets/actions";
-import { Button } from "@/components/ui/button";
+import { describedBy, Field, nativeSelectClass } from "@/components/form-field";
+import { SubmitButton } from "@/components/submit-button";
+import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { clearFlash, setFlash } from "@/lib/flash";
 
 type Initial = {
   name: string;
@@ -23,65 +25,107 @@ const emptyInitial: Initial = {
   status: "active",
 };
 
+const hints = {
+  name: "What people call it on the floor.",
+  type: "For example Lathe, Forklift or HVAC unit.",
+  location: "Building, room or bay. Optional.",
+  serial: "Must be unique. Optional.",
+  status: "Retired assets are kept but cannot get new work orders.",
+} as const;
+
 export function AssetForm({
   action,
   initial = emptyInitial,
   submitLabel,
+  successMessage,
   cancelHref,
 }: {
   action: (prev: AssetFormState, formData: FormData) => Promise<AssetFormState>;
   initial?: Initial;
   submitLabel: string;
+  successMessage: string;
   cancelHref: string;
 }) {
-  const [state, formAction, pending] = useActionState(action, {});
+  // A successful save redirects, so the toast is shown on the next page.
+  // Returning from the action means it failed validation: drop the message.
+  const [state, formAction, pending] = useActionState(
+    async (prev: AssetFormState, formData: FormData) => {
+      setFlash(successMessage);
+      const next = await action(prev, formData);
+      clearFlash();
+      return next;
+    },
+    {},
+  );
   const errors = state.errors ?? {};
   const v = (key: keyof Initial) => state.values?.[key] ?? initial[key];
 
   return (
-    <form action={formAction} noValidate className="flex flex-col gap-4">
-      <Field label="Name" id="name" error={errors.name}>
+    <form action={formAction} noValidate className="flex flex-col gap-5">
+      <Field label="Name" id="name" hint={hints.name} error={errors.name}>
         <Input
           id="name"
           name="name"
           defaultValue={v("name")}
-          className="h-12 text-base"
           aria-invalid={!!errors.name}
+          aria-describedby={describedBy("name", hints.name, errors.name)}
         />
       </Field>
-      <Field label="Type" id="type" error={errors.type}>
+      <Field label="Type" id="type" hint={hints.type} error={errors.type}>
         <Input
           id="type"
           name="type"
           defaultValue={v("type")}
-          className="h-12 text-base"
           aria-invalid={!!errors.type}
+          aria-describedby={describedBy("type", hints.type, errors.type)}
         />
       </Field>
-      <Field label="Location" id="location" error={errors.location}>
+      <Field
+        label="Location"
+        id="location"
+        hint={hints.location}
+        error={errors.location}
+      >
         <Input
           id="location"
           name="location"
           defaultValue={v("location")}
-          className="h-12 text-base"
           aria-invalid={!!errors.location}
+          aria-describedby={describedBy(
+            "location",
+            hints.location,
+            errors.location,
+          )}
         />
       </Field>
-      <Field label="Serial" id="serial" error={errors.serial}>
+      <Field
+        label="Serial"
+        id="serial"
+        hint={hints.serial}
+        error={errors.serial}
+      >
         <Input
           id="serial"
           name="serial"
           defaultValue={v("serial")}
-          className="h-12 text-base"
+          className="font-mono"
           aria-invalid={!!errors.serial}
+          aria-describedby={describedBy("serial", hints.serial, errors.serial)}
         />
       </Field>
-      <Field label="Status" id="status" error={errors.status}>
+      <Field
+        label="Status"
+        id="status"
+        hint={hints.status}
+        error={errors.status}
+      >
         <select
           id="status"
           name="status"
           defaultValue={v("status")}
-          className="h-12 w-full rounded-lg border border-input bg-background px-2.5 text-base"
+          className={nativeSelectClass}
+          aria-invalid={!!errors.status}
+          aria-describedby={describedBy("status", hints.status, errors.status)}
         >
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -89,41 +133,19 @@ export function AssetForm({
         </select>
       </Field>
       {errors.form && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base font-medium text-destructive">
           {errors.form}
         </p>
       )}
-      <Button type="submit" disabled={pending} className="h-12 text-base">
-        {submitLabel}
-      </Button>
-      <Link
-        href={cancelHref}
-        className="flex h-12 items-center justify-center text-base underline underline-offset-4"
-      >
-        Cancel
-      </Link>
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <Link
+          href={cancelHref}
+          className={buttonVariants({ variant: "outline", size: "lg" })}
+        >
+          Cancel
+        </Link>
+        <SubmitButton pending={pending}>{submitLabel}</SubmitButton>
+      </div>
     </form>
-  );
-}
-
-function Field({
-  label,
-  id,
-  error,
-  children,
-}: {
-  label: string;
-  id: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id} className="text-base">
-        {label}
-      </Label>
-      {children}
-      {error && <p className="text-sm text-destructive">{error}</p>}
-    </div>
   );
 }

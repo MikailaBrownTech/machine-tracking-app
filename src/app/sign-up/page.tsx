@@ -1,15 +1,18 @@
 import { Suspense } from "react";
+import { AuthCard } from "@/components/auth-card";
 import { AuthForm } from "@/components/auth-form";
 import { RedirectIfSignedIn } from "@/components/redirect-if-signed-in";
 
 export default function SignUpPage() {
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-4 py-8">
+    <AuthCard
+      title="Create account"
+      description="New accounts can view everything. An owner promotes you to edit."
+    >
       <Suspense fallback={null}>
         <RedirectIfSignedIn />
       </Suspense>
-      <h1 className="text-2xl font-semibold">Create account</h1>
       <AuthForm mode="sign-up" />
-    </main>
+    </AuthCard>
   );
 }

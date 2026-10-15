@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
+import { describedBy, Field } from "@/components/form-field";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import { setFlash } from "@/lib/flash";
 
 const signInSchema = z.object({
   email: z.email("Enter a valid email"),
@@ -61,6 +62,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       setFormError(result.error.message ?? "Something went wrong");
       return;
     }
+    setFlash(isSignUp ? "Account created" : "Signed in");
     router.push("/");
     router.refresh();
   }
@@ -73,7 +75,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             id="name"
             name="name"
             autoComplete="name"
-            className="h-12 text-base"
+
             aria-invalid={!!errors.name}
           />
         </Field>
@@ -84,59 +86,47 @@ export function AuthForm({ mode }: { mode: Mode }) {
           name="email"
           type="email"
           autoComplete="email"
-          className="h-12 text-base"
+
           aria-invalid={!!errors.email}
         />
       </Field>
-      <Field label="Password" id="password" error={errors.password}>
+      <Field
+        label="Password"
+        id="password"
+        hint={isSignUp ? "At least 8 characters." : undefined}
+        error={errors.password}
+      >
         <Input
           id="password"
           name="password"
           type="password"
           autoComplete={isSignUp ? "new-password" : "current-password"}
-          className="h-12 text-base"
+
           aria-invalid={!!errors.password}
+          aria-describedby={describedBy(
+            "password",
+            isSignUp ? "x" : undefined,
+            errors.password,
+          )}
         />
       </Field>
       {formError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base font-medium text-destructive">
           {formError}
         </p>
       )}
-      <Button type="submit" disabled={pending} className="h-12 text-base">
+      <SubmitButton pending={pending}>
         {isSignUp ? "Create account" : "Sign in"}
-      </Button>
-      <p className="text-center text-sm text-muted-foreground">
+      </SubmitButton>
+      <p className="text-center text-base text-muted-foreground">
         {isSignUp ? "Already have an account? " : "No account yet? "}
         <Link
           href={isSignUp ? "/sign-in" : "/sign-up"}
-          className="font-medium text-foreground underline underline-offset-4"
+          className="inline-flex min-h-tap items-center font-medium text-foreground underline underline-offset-4"
         >
           {isSignUp ? "Sign in" : "Sign up"}
         </Link>
       </p>
     </form>
-  );
-}
-
-function Field({
-  label,
-  id,
-  error,
-  children,
-}: {
-  label: string;
-  id: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id} className="text-base">
-        {label}
-      </Label>
-      {children}
-      {error && <p className="text-sm text-destructive">{error}</p>}
-    </div>
   );
 }

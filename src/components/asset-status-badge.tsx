@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Asset } from "@/db/queries/assets";
 
 const variants = {
-  active: "default",
+  active: "done",
   inactive: "secondary",
   retired: "outline",
 } as const;

@@ -12,3 +12,8 @@ const formatter = new Intl.DateTimeFormat("en-US", {
 export function formatDateTime(date: Date): string {
   return formatter.format(date);
 }
+
+// First segment of a UUID: short enough to read aloud, shown in mono.
+export function shortId(id: string): string {
+  return id.slice(0, 8);
+}

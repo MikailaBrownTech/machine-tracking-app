@@ -1,14 +1,20 @@
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { EventTimeline } from "@/components/event-timeline";
+import { Page } from "@/components/page";
+import { WorkOrderSkeleton } from "@/components/skeletons";
 import { StatusChangeForm } from "@/components/status-change-form";
+import { StatusStepper } from "@/components/status-stepper";
+import { Card } from "@/components/ui/card";
 import {
   PriorityBadge,
   statusLabel,
   WorkOrderStatusBadge,
 } from "@/components/work-order-badges";
 import { getWorkOrder, listWorkOrderEvents } from "@/db/queries/work-orders";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, shortId } from "@/lib/format";
 import { can, requireUser } from "@/lib/session";
 import { nextStatuses } from "@/lib/work-orders/transitions";
 import { changeWorkOrderStatus } from "../actions";
@@ -28,62 +34,67 @@ async function WorkOrderDetails({
   }));
 
   return (
-    <>
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{wo.title}</h1>
-        <WorkOrderStatusBadge status={wo.status} />
-      </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-base">
-        <dt className="text-muted-foreground">Asset</dt>
-        <dd>
-          <Link
-            href={`/assets/${row.assetId}`}
-            className="inline-flex min-h-11 items-center underline underline-offset-4"
-          >
-            {row.assetName}
-          </Link>
-        </dd>
-        <dt className="text-muted-foreground">Priority</dt>
-        <dd>
-          <PriorityBadge priority={wo.priority} />
-        </dd>
-        <dt className="text-muted-foreground">Created</dt>
-        <dd>{formatDateTime(wo.createdAt)}</dd>
-        {wo.completedAt && (
-          <>
-            <dt className="text-muted-foreground">Completed</dt>
-            <dd>{formatDateTime(wo.completedAt)}</dd>
-          </>
+    <div className="grid gap-6 md:grid-cols-[1fr_22rem] md:items-start">
+      <div className="flex flex-col gap-6">
+        <Card className="gap-4 px-4 md:px-6">
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-sm text-muted-foreground">
+              WO-{shortId(wo.id)}
+            </p>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                {wo.title}
+              </h1>
+              <WorkOrderStatusBadge status={wo.status} />
+            </div>
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-2 text-base">
+            <dt className="text-muted-foreground">Asset</dt>
+            <dd>
+              <Link
+                href={`/assets/${row.assetId}`}
+                className="inline-flex min-h-tap items-center gap-1 font-medium underline underline-offset-4"
+              >
+                {row.assetName}
+                <ChevronRight className="size-4" aria-hidden />
+              </Link>
+            </dd>
+            <dt className="text-muted-foreground">Priority</dt>
+            <dd>
+              <PriorityBadge priority={wo.priority} />
+            </dd>
+            <dt className="text-muted-foreground">Created</dt>
+            <dd>{formatDateTime(wo.createdAt)}</dd>
+            {wo.completedAt && (
+              <>
+                <dt className="text-muted-foreground">Completed</dt>
+                <dd>{formatDateTime(wo.completedAt)}</dd>
+              </>
+            )}
+          </dl>
+          {wo.description && (
+            <p className="border-t pt-4 text-base whitespace-pre-wrap">
+              {wo.description}
+            </p>
+          )}
+        </Card>
+
+        <StatusStepper current={wo.status} />
+
+        {can(user.role, "write") && options.length > 0 && (
+          <StatusChangeForm
+            action={changeWorkOrderStatus.bind(null, wo.id)}
+            current={wo.status}
+            options={options}
+          />
         )}
-      </dl>
-      {wo.description && (
-        <p className="whitespace-pre-wrap text-base">{wo.description}</p>
-      )}
-      {can(user.role, "write") && options.length > 0 && (
-        <StatusChangeForm
-          action={changeWorkOrderStatus.bind(null, wo.id)}
-          current={wo.status}
-          options={options}
-        />
-      )}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">History</h2>
-        <ol className="flex flex-col gap-3">
-          {events.map((e) => (
-            <li key={e.id} className="rounded-lg border p-3 text-base">
-              <p className="font-medium">
-                {e.fromStatus ? statusLabel(e.fromStatus) : "created"} →{" "}
-                {statusLabel(e.toStatus)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {e.actorName} · {formatDateTime(e.createdAt)}
-              </p>
-              {e.note && <p className="mt-1">{e.note}</p>}
-            </li>
-          ))}
-        </ol>
-      </section>
-    </>
+      </div>
+
+      <Card className="gap-4 px-4">
+        <h2 className="text-xl font-semibold">History</h2>
+        <EventTimeline events={events} />
+      </Card>
+    </div>
   );
 }
 
@@ -91,10 +102,10 @@ export default function WorkOrderPage({
   params,
 }: PageProps<"/work-orders/[id]">) {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
-      <Suspense fallback={<p className="text-base">Loading…</p>}>
+    <Page>
+      <Suspense fallback={<WorkOrderSkeleton />}>
         <WorkOrderDetails params={params} />
       </Suspense>
-    </main>
+    </Page>
   );
 }

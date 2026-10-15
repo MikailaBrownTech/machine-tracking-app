@@ -1,52 +1,51 @@
+import { ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import {
-  PriorityBadge,
-  WorkOrderStatusBadge,
-} from "@/components/work-order-badges";
+import { EmptyState } from "@/components/empty-state";
+import { Page, PageHeader } from "@/components/page";
+import { ListSkeleton } from "@/components/skeletons";
+import { buttonVariants } from "@/components/ui/button";
+import { WorkOrderList } from "@/components/work-order-list";
 import { listOpenWorkOrders } from "@/db/queries/work-orders";
-import { formatDateTime } from "@/lib/format";
-import { requireUser } from "@/lib/session";
+import { can, requireUser } from "@/lib/session";
 
 async function OpenWorkOrders() {
-  await requireUser();
+  const user = await requireUser();
   const rows = await listOpenWorkOrders();
   if (rows.length === 0) {
     return (
-      <p className="text-base text-muted-foreground">No open work orders.</p>
+      <EmptyState
+        icon={ClipboardList}
+        title="No open work orders"
+        description={
+          can(user.role, "write")
+            ? "Open an asset and create a work order to get started."
+            : "Everything is up to date."
+        }
+        action={
+          <Link
+            href="/assets"
+            className={buttonVariants({ variant: "outline", size: "lg" })}
+          >
+            Go to assets
+          </Link>
+        }
+      />
     );
   }
-  return (
-    <ul className="flex flex-col gap-3">
-      {rows.map(({ workOrder: wo, assetName }) => (
-        <li key={wo.id}>
-          <Link
-            href={`/work-orders/${wo.id}`}
-            className="flex min-h-11 flex-col gap-1 rounded-lg border p-3 text-base"
-          >
-            <span className="font-medium">{wo.title}</span>
-            <span className="text-sm text-muted-foreground">{assetName}</span>
-            <span className="flex flex-wrap items-center gap-2">
-              <WorkOrderStatusBadge status={wo.status} />
-              <PriorityBadge priority={wo.priority} />
-              <span className="text-sm text-muted-foreground">
-                {formatDateTime(wo.createdAt)}
-              </span>
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
+  return <WorkOrderList rows={rows} />;
 }
 
 export default function WorkOrdersPage() {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
-      <h1 className="text-2xl font-semibold">Work orders</h1>
-      <Suspense fallback={<p className="text-base">Loading…</p>}>
+    <Page>
+      <PageHeader
+        title="Work orders"
+        description="Open and in progress, newest first"
+      />
+      <Suspense fallback={<ListSkeleton />}>
         <OpenWorkOrders />
       </Suspense>
-    </main>
+    </Page>
   );
 }

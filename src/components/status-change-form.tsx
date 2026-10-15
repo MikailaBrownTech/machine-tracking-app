@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
+import { toast } from "sonner";
 import type { StatusChangeState } from "@/app/work-orders/actions";
-import { Button } from "@/components/ui/button";
+import { Field } from "@/components/form-field";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 type Status = "open" | "in_progress" | "done";
 
@@ -20,38 +21,44 @@ export function StatusChangeForm({
   current: Status;
   options: { value: Status; label: string }[];
 }) {
-  const [state, formAction, pending] = useActionState(action, {});
+  const [state, formAction, pending] = useActionState(
+    async (prev: StatusChangeState, formData: FormData) => {
+      const next = await action(prev, formData);
+      if (!next.error) {
+        const to = options.find((o) => o.value === formData.get("toStatus"));
+        toast.success(to ? `Moved to ${to.label}` : "Status updated");
+      }
+      return next;
+    },
+    {},
+  );
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="expectedFrom" value={current} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="note" className="text-base">
-          Note (optional)
-        </Label>
-        <Input
-          id="note"
-          name="note"
-          maxLength={500}
-          className="h-12 text-base"
-        />
-      </div>
+      <Field
+        label="Note (optional)"
+        id="note"
+        hint="Shown in the history. Up to 500 characters."
+      >
+        <Input id="note" name="note" maxLength={500} />
+      </Field>
       {state.error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base font-medium text-destructive">
           {state.error}
         </p>
       )}
-      {options.map((o) => (
-        <Button
+      {options.map((o, i) => (
+        <SubmitButton
           key={o.value}
-          type="submit"
           name="toStatus"
           value={o.value}
-          disabled={pending}
-          className="h-12 text-base"
+          pending={pending}
+          variant={i === 0 ? "default" : "outline"}
+          className="h-14 text-lg font-semibold"
         >
           Move to {o.label}
-        </Button>
+        </SubmitButton>
       ))}
     </form>
   );

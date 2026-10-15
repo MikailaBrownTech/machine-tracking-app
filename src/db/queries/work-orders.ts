@@ -1,4 +1,4 @@
-import { asc, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { assets, users, workOrderEvents, workOrders } from "@/db/schema";
@@ -52,4 +52,32 @@ export async function listWorkOrderEvents(workOrderId: string) {
     .innerJoin(users, eq(users.id, workOrderEvents.actorId))
     .where(eq(workOrderEvents.workOrderId, workOrderId))
     .orderBy(asc(workOrderEvents.createdAt));
+}
+
+export type DashboardCounts = {
+  open: number;
+  inProgress: number;
+  doneLast7Days: number;
+};
+
+export async function getDashboardCounts(): Promise<DashboardCounts> {
+  const [row] = await db
+    .select({
+      open: sql<number>`count(*) filter (where ${workOrders.status} = 'open')::int`,
+      inProgress: sql<number>`count(*) filter (where ${workOrders.status} = 'in_progress')::int`,
+      doneLast7Days: sql<number>`count(*) filter (where ${workOrders.status} = 'done' and ${workOrders.completedAt} >= now() - interval '7 days')::int`,
+    })
+    .from(workOrders);
+  return row ?? { open: 0, inProgress: 0, doneLast7Days: 0 };
+}
+
+// High-priority work orders nobody has started yet, oldest first.
+export async function listNeedsAttention(limit = 5) {
+  return db
+    .select({ workOrder: workOrders, assetName: assets.name })
+    .from(workOrders)
+    .innerJoin(assets, eq(assets.id, workOrders.assetId))
+    .where(and(eq(workOrders.status, "open"), eq(workOrders.priority, "high")))
+    .orderBy(asc(workOrders.createdAt))
+    .limit(limit);
 }

@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { Page, PageHeader } from "@/components/page";
+import { FormSkeleton } from "@/components/skeletons";
 import { WorkOrderForm } from "@/components/work-order-form";
 import { getAsset } from "@/db/queries/assets";
 import { requireRole } from "@/lib/session";
@@ -15,7 +17,9 @@ async function NewWorkOrder({
   if (asset.status === "retired") redirect(`/assets/${asset.id}`);
   return (
     <>
-      <p className="text-base text-muted-foreground">{asset.name}</p>
+      <p className="text-base text-muted-foreground">
+        For <span className="font-medium text-foreground">{asset.name}</span>
+      </p>
       <WorkOrderForm
         action={createWorkOrder.bind(null, asset.id)}
         cancelHref={`/assets/${asset.id}`}
@@ -28,11 +32,11 @@ export default function NewWorkOrderPage({
   params,
 }: PageProps<"/assets/[id]/work-orders/new">) {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
-      <h1 className="text-2xl font-semibold">New work order</h1>
-      <Suspense fallback={<p className="text-base">Loading…</p>}>
+    <Page narrow>
+      <PageHeader title="New work order" />
+      <Suspense fallback={<FormSkeleton />}>
         <NewWorkOrder params={params} />
       </Suspense>
-    </main>
+    </Page>
   );
 }

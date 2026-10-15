@@ -3,9 +3,18 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import type { WorkOrderFormState } from "@/app/work-orders/actions";
-import { Button } from "@/components/ui/button";
+import { describedBy, Field, nativeSelectClass } from "@/components/form-field";
+import { SubmitButton } from "@/components/submit-button";
+import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { clearFlash, setFlash } from "@/lib/flash";
+
+const hints = {
+  title: "A short summary, like “Replace spindle belt”.",
+  description: "What is wrong and what needs doing. Optional.",
+  priority: "High priority work shows on the dashboard until started.",
+} as const;
 
 export function WorkOrderForm({
   action,
@@ -17,74 +26,86 @@ export function WorkOrderForm({
   ) => Promise<WorkOrderFormState>;
   cancelHref: string;
 }) {
-  const [state, formAction, pending] = useActionState(action, {});
+  // A successful create redirects, so the toast is shown on the next page.
+  const [state, formAction, pending] = useActionState(
+    async (prev: WorkOrderFormState, formData: FormData) => {
+      setFlash("Work order created");
+      const next = await action(prev, formData);
+      clearFlash();
+      return next;
+    },
+    {},
+  );
   const errors = state.errors ?? {};
   const v = (key: string, fallback = "") => state.values?.[key] ?? fallback;
 
   return (
-    <form action={formAction} noValidate className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="title" className="text-base">
-          Title
-        </Label>
+    <form action={formAction} noValidate className="flex flex-col gap-5">
+      <Field label="Title" id="title" hint={hints.title} error={errors.title}>
         <Input
           id="title"
           name="title"
           defaultValue={v("title")}
-          className="h-12 text-base"
           aria-invalid={!!errors.title}
+          aria-describedby={describedBy("title", hints.title, errors.title)}
         />
-        {errors.title && (
-          <p className="text-sm text-destructive">{errors.title}</p>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="description" className="text-base">
-          Description
-        </Label>
-        <textarea
+      </Field>
+      <Field
+        label="Description"
+        id="description"
+        hint={hints.description}
+        error={errors.description}
+      >
+        <Textarea
           id="description"
           name="description"
           rows={4}
           defaultValue={v("description")}
-          className="w-full rounded-lg border border-input bg-background px-2.5 py-2 text-base"
+          aria-invalid={!!errors.description}
+          aria-describedby={describedBy(
+            "description",
+            hints.description,
+            errors.description,
+          )}
         />
-        {errors.description && (
-          <p className="text-sm text-destructive">{errors.description}</p>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="priority" className="text-base">
-          Priority
-        </Label>
+      </Field>
+      <Field
+        label="Priority"
+        id="priority"
+        hint={hints.priority}
+        error={errors.priority}
+      >
         <select
           id="priority"
           name="priority"
           defaultValue={v("priority", "medium")}
-          className="h-12 w-full rounded-lg border border-input bg-background px-2.5 text-base"
+          className={nativeSelectClass}
+          aria-invalid={!!errors.priority}
+          aria-describedby={describedBy(
+            "priority",
+            hints.priority,
+            errors.priority,
+          )}
         >
           <option value="low">Low</option>
           <option value="medium">Medium</option>
           <option value="high">High</option>
         </select>
-        {errors.priority && (
-          <p className="text-sm text-destructive">{errors.priority}</p>
-        )}
-      </div>
+      </Field>
       {errors.form && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-base font-medium text-destructive">
           {errors.form}
         </p>
       )}
-      <Button type="submit" disabled={pending} className="h-12 text-base">
-        Create work order
-      </Button>
-      <Link
-        href={cancelHref}
-        className="flex h-12 items-center justify-center text-base underline underline-offset-4"
-      >
-        Cancel
-      </Link>
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <Link
+          href={cancelHref}
+          className={buttonVariants({ variant: "outline", size: "lg" })}
+        >
+          Cancel
+        </Link>
+        <SubmitButton pending={pending}>Create work order</SubmitButton>
+      </div>
     </form>
   );
 }

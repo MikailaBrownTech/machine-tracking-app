@@ -1,18 +1,19 @@
+import { ClipboardList, Pencil, Plus, Printer, QrCode } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AssetStatusBadge } from "@/components/asset-status-badge";
+import { EmptyState } from "@/components/empty-state";
+import { Page } from "@/components/page";
+import { DetailSkeleton } from "@/components/skeletons";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { WorkOrderList } from "@/components/work-order-list";
 import { getAsset } from "@/db/queries/assets";
-import {
-  PriorityBadge,
-  WorkOrderStatusBadge,
-} from "@/components/work-order-badges";
 import { listWorkOrdersForAsset } from "@/db/queries/work-orders";
-import { formatDateTime } from "@/lib/format";
 import { assetQrDataUrl } from "@/lib/qr";
 import { can, requireUser } from "@/lib/session";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 import { setAssetStatus } from "../actions";
 
 async function AssetDetails({
@@ -28,106 +29,124 @@ async function AssetDetails({
   ]);
   const writer = can(user.role, "write");
   const retired = asset.status === "retired";
+  const canCreate = writer && !retired;
   const toggle = setAssetStatus.bind(
     null,
     asset.id,
     retired ? "active" : "retired",
   );
+  // One link: pinned above the tab bar on mobile, inline from md up.
+  const newWorkOrder = (
+    <Link
+      href={`/assets/${asset.id}/work-orders/new`}
+      className={cn(
+        buttonVariants({ size: "lg" }),
+        "fixed inset-x-4 bottom-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom)+0.75rem)] z-30 shadow-lg md:static md:inset-auto md:shadow-none",
+      )}
+    >
+      <Plus aria-hidden />
+      New work order
+    </Link>
+  );
 
   return (
-    <>
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{asset.name}</h1>
-        <AssetStatusBadge status={asset.status} />
-      </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-base">
-        <dt className="text-muted-foreground">Type</dt>
-        <dd>{asset.type}</dd>
-        <dt className="text-muted-foreground">Location</dt>
-        <dd>{asset.location || "—"}</dd>
-        <dt className="text-muted-foreground">Serial</dt>
-        <dd>{asset.serial ?? "—"}</dd>
-      </dl>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={qr}
-        alt={`QR code linking to ${asset.name}`}
-        width={192}
-        height={192}
-        className="size-48"
-      />
-      {writer && (
-        <div className="flex flex-col gap-2">
-          <Link
-            href={`/assets/${asset.id}/edit`}
-            className={cn(buttonVariants(), "h-12 text-base")}
-          >
-            Edit
-          </Link>
+    <div
+      className={cn(
+        "grid gap-6 md:grid-cols-[1fr_18rem] md:items-start",
+        canCreate && "pb-20 md:pb-0",
+      )}
+    >
+      <Card className={cn("gap-4 px-4 md:px-6", retired && "bg-muted")}>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+            {asset.name}
+          </h1>
+          <AssetStatusBadge status={asset.status} />
+        </div>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-base">
+          <dt className="text-muted-foreground">Type</dt>
+          <dd>{asset.type}</dd>
+          <dt className="text-muted-foreground">Location</dt>
+          <dd>{asset.location || "—"}</dd>
+          <dt className="text-muted-foreground">Serial</dt>
+          <dd className="font-mono">{asset.serial ?? "—"}</dd>
+        </dl>
+        {writer && (
+          <div className="flex flex-wrap gap-2 border-t pt-4">
+            <Link
+              href={`/assets/${asset.id}/edit`}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <Pencil aria-hidden />
+              Edit
+            </Link>
+            <form action={toggle}>
+              <Button type="submit" variant="outline">
+                {retired ? "Reactivate" : "Retire"}
+              </Button>
+            </form>
+          </div>
+        )}
+      </Card>
+
+      <Card className="items-center gap-3 px-4 md:col-start-2 md:row-span-2 md:row-start-1">
+        <div className="flex items-center gap-2 text-base font-semibold">
+          <QrCode className="size-5" aria-hidden />
+          QR label
+        </div>
+        {/* White tile keeps the code scannable in dark mode. */}
+        <div className="rounded-lg bg-white p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qr}
+            alt={`QR code linking to ${asset.name}`}
+            width={192}
+            height={192}
+            className="size-48"
+          />
+        </div>
+        {writer && (
           <Link
             href={`/assets/${asset.id}/print`}
-            className={cn(
-              buttonVariants({ variant: "outline" }),
-              "h-12 text-base",
-            )}
+            className={cn(buttonVariants({ variant: "outline" }), "w-full")}
           >
+            <Printer aria-hidden />
             Print QR
           </Link>
-          <form action={toggle}>
-            <Button
-              type="submit"
-              variant="outline"
-              className="h-12 w-full text-base"
-            >
-              {retired ? "Reactivate" : "Retire"}
-            </Button>
-          </form>
-        </div>
-      )}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Work orders</h2>
-        {writer && !retired && (
-          <Link
-            href={`/assets/${asset.id}/work-orders/new`}
-            className={cn(buttonVariants(), "h-12 text-base")}
-          >
-            New work order
-          </Link>
         )}
+      </Card>
+
+      <section className="flex flex-col gap-3 md:col-start-1">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">Work orders</h2>
+          {canCreate && newWorkOrder}
+        </div>
         {workOrders.length === 0 ? (
-          <p className="text-base text-muted-foreground">No work orders yet.</p>
+          <EmptyState
+            icon={ClipboardList}
+            title="No work orders yet"
+            description={
+              canCreate
+                ? "Log the first repair or inspection for this asset."
+                : "Nothing has been logged for this asset."
+            }
+          />
         ) : (
-          <ul className="flex flex-col gap-3">
-            {workOrders.map((wo) => (
-              <li key={wo.id}>
-                <Link
-                  href={`/work-orders/${wo.id}`}
-                  className="flex min-h-11 flex-col gap-1 rounded-lg border p-3 text-base"
-                >
-                  <span className="font-medium">{wo.title}</span>
-                  <span className="flex flex-wrap items-center gap-2">
-                    <WorkOrderStatusBadge status={wo.status} />
-                    <PriorityBadge priority={wo.priority} />
-                    <span className="text-sm text-muted-foreground">
-                      {formatDateTime(wo.createdAt)}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <WorkOrderList
+            rows={workOrders.map((workOrder) => ({ workOrder }))}
+          />
         )}
       </section>
-    </>
+    </div>
   );
 }
 
 export default function AssetPage({ params }: PageProps<"/assets/[id]">) {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
-      <Suspense fallback={<p className="text-base">Loading…</p>}>
+    <Page>
+      <Suspense fallback={<DetailSkeleton />}>
         <AssetDetails params={params} />
       </Suspense>
-    </main>
+    </Page>
   );
 }

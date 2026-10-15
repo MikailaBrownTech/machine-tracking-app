@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { Page, PageHeader } from "@/components/page";
+import { FormSkeleton } from "@/components/skeletons";
 import { AssetForm } from "@/components/asset-form";
 import { getAsset } from "@/db/queries/assets";
 import { requireRole } from "@/lib/session";
@@ -23,6 +25,7 @@ async function EditAssetForm({
         status: asset.status,
       }}
       submitLabel="Save changes"
+      successMessage="Asset saved"
       cancelHref={`/assets/${id}`}
     />
   );
@@ -32,11 +35,11 @@ export default function EditAssetPage({
   params,
 }: PageProps<"/assets/[id]/edit">) {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
-      <h1 className="text-2xl font-semibold">Edit asset</h1>
-      <Suspense fallback={<p className="text-base">Loading…</p>}>
+    <Page narrow>
+      <PageHeader title="Edit asset" />
+      <Suspense fallback={<FormSkeleton />}>
         <EditAssetForm params={params} />
       </Suspense>
-    </main>
+    </Page>
   );
 }
