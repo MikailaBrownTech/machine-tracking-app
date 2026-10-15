@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "node scripts/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
