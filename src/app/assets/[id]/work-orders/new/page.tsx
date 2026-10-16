@@ -4,6 +4,8 @@ import { Page, PageHeader } from "@/components/page";
 import { FormSkeleton } from "@/components/skeletons";
 import { WorkOrderForm } from "@/components/work-order-form";
 import { getAsset } from "@/db/queries/assets";
+import { draftWorkOrder } from "@/app/work-orders/ai-actions";
+import { env } from "@/env";
 import { requireRole } from "@/lib/session";
 import { createWorkOrder } from "@/app/work-orders/actions";
 
@@ -22,6 +24,11 @@ async function NewWorkOrder({
       </p>
       <WorkOrderForm
         action={createWorkOrder.bind(null, asset.id)}
+        draftAction={
+          env.ANTHROPIC_API_KEY
+            ? draftWorkOrder.bind(null, asset.id)
+            : undefined
+        }
         cancelHref={`/assets/${asset.id}`}
       />
     </>

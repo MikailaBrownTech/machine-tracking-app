@@ -3,6 +3,8 @@ import {
   boolean,
   check,
   index,
+  integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -188,5 +190,39 @@ export const workOrderEvents = pgTable(
       sql`${t.fromStatus} is distinct from ${t.toStatus}`,
     ),
     index("work_order_events_wo_created_idx").on(t.workOrderId, t.createdAt),
+  ],
+);
+
+// Every AI drafting attempt. The model only suggests; accepted_work_order_id is
+// set when a work order is later saved from the draft.
+export const aiDrafts = pgTable(
+  "ai_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    assetId: uuid("asset_id")
+      .notNull()
+      .references(() => assets.id, { onDelete: "restrict" }),
+    note: text("note").notNull(),
+    output: jsonb("output"),
+    outcome: text("outcome").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    latencyMs: integer("latency_ms").notNull(),
+    acceptedWorkOrderId: uuid("accepted_work_order_id").references(
+      () => workOrders.id,
+      { onDelete: "restrict" },
+    ),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "ai_drafts_outcome_valid",
+      sql`${t.outcome} in ('ok', 'invalid', 'refused', 'error')`,
+    ),
+    index("ai_drafts_user_created_idx").on(t.userId, t.createdAt),
   ],
 );

@@ -1,11 +1,11 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { assets, workOrderEvents, workOrders } from "@/db/schema";
+import { aiDrafts, assets, workOrderEvents, workOrders } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import {
   changeStatusSchema,
@@ -70,6 +70,9 @@ export async function createWorkOrder(
     return { errors, values };
   }
 
+  const draftIdParsed = z.uuid().safeParse(values.draftId);
+  const draftId = draftIdParsed.success ? draftIdParsed.data : null;
+
   let newId: string;
   try {
     const result = await db.transaction(async (tx) => {
@@ -98,6 +101,21 @@ export async function createWorkOrder(
         toStatus: "open",
         actorId: user.id,
       });
+      // Link the AI draft once, only if it is this user's draft for this asset.
+      if (draftId) {
+        await tx
+          .update(aiDrafts)
+          .set({ acceptedWorkOrderId: wo.id })
+          .where(
+            and(
+              eq(aiDrafts.id, draftId),
+              eq(aiDrafts.userId, user.id),
+              eq(aiDrafts.assetId, assetId),
+              eq(aiDrafts.outcome, "ok"),
+              isNull(aiDrafts.acceptedWorkOrderId),
+            ),
+          );
+      }
       return { id: wo.id } as const;
     });
     if ("error" in result) return { errors: { form: result.error }, values };
