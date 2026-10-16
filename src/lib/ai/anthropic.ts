@@ -16,7 +16,7 @@ export function createAnthropicCompleter(config: {
   return async (system, user): Promise<Completion> => {
     const message = await client.messages.create({
       model: config.model,
-      max_tokens: 1500,
+      max_tokens: 900,
       system,
       messages: [{ role: "user", content: user }],
       output_config: {

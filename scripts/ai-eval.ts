@@ -17,31 +17,37 @@ const samples: {
   note: string;
   expected: "low" | "medium" | "high";
   lowDetail: boolean;
+  safety?: boolean;
 }[] = [
   {
     note: "Guard interlock is bypassed with a zip tie, press cycles with the door open.",
     expected: "high",
     lowDetail: false,
+    safety: true,
   },
   {
     note: "Hydraulic oil is spraying from the main ram seal, line is shut down.",
     expected: "high",
     lowDetail: false,
+    safety: true,
   },
   {
     note: "Smell of burning from the motor and breaker tripped twice today. Can't run it.",
     expected: "high",
     lowDetail: false,
+    safety: true,
   },
   {
     note: "Pressure gauge reads low after warmup, still making parts but slower.",
     expected: "medium",
     lowDetail: false,
+    safety: true,
   },
   {
     note: "Loud rattle from the pump on startup, goes away after a few minutes.",
     expected: "medium",
     lowDetail: false,
+    safety: true,
   },
   {
     note: "Coolant looks cloudy and the filter light comes on now and then.",
@@ -73,6 +79,7 @@ const samples: {
   { note: "weird noise?", expected: "medium", lowDetail: true },
 ];
 
+const ISOLATE = /lockout|lock out|tagout|isolat|de-?energi/i;
 const BANNED = [/the note/i, /asset context/i, /technician/i];
 
 function digitsOf(text: string): string[] {
@@ -82,7 +89,17 @@ function digitsOf(text: string): string[] {
 async function main(): Promise<void> {
   const complete = createAnthropicCompleter({ apiKey: apiKey!, model });
   const rows: string[][] = [
-    ["#", "expected", "got", "prio", "title", "digits", "detail", "voice"],
+    [
+      "#",
+      "expected",
+      "got",
+      "prio",
+      "title",
+      "digits",
+      "detail",
+      "voice",
+      "steps",
+    ],
   ];
   let failures = 0;
 
@@ -97,6 +114,7 @@ async function main(): Promise<void> {
         String(i + 1),
         s.expected,
         `(${result.reason})`,
+        "FAIL",
         "FAIL",
         "FAIL",
         "FAIL",
@@ -117,6 +135,19 @@ async function main(): Promise<void> {
       draft.low_detail === s.lowDetail && draft.description.length > 0,
       !BANNED.some((re) => re.test(`${draft.title} ${draft.description}`)),
     ];
+    const steps = draft.suggested_steps;
+    const [min, max] = s.lowDetail ? [1, 5] : [3, 5];
+    const stepProblems: string[] = [];
+    if (steps.length < min || steps.length > max) stepProblems.push("count");
+    if (s.safety && !(steps[0] && ISOLATE.test(steps[0]))) {
+      stepProblems.push("lockout");
+    }
+    const stepText = steps.join(" ");
+    if (digitsOf(stepText).some((d) => !noteDigits.has(d))) {
+      stepProblems.push("digits");
+    }
+    if (BANNED.some((re) => re.test(stepText))) stepProblems.push("phrase");
+    checks.push(stepProblems.length === 0);
     if (checks.includes(false)) failures++;
     rows.push([
       String(i + 1),
@@ -127,6 +158,7 @@ async function main(): Promise<void> {
       checks[2] ? "pass" : `FAIL (${invented.join(",")})`,
       checks[3] ? "pass" : "FAIL",
       checks[4] ? "pass" : "FAIL",
+      checks[5] ? "pass" : `FAIL (${stepProblems.join(",")})`,
     ]);
   }
 

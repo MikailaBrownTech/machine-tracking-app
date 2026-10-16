@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { composeDescription } from "@/lib/ai/compose";
 import { clearFlash, setFlash } from "@/lib/flash";
 
 const hints = {
@@ -70,7 +71,12 @@ export function WorkOrderForm({
         return;
       }
       setTitle(result.draft.title);
-      setDescription(result.draft.description);
+      setDescription(
+        composeDescription(
+          result.draft.description,
+          result.draft.suggested_steps,
+        ),
+      );
       setPriority(result.draft.priority);
       setDraft({
         draftId: result.draftId,

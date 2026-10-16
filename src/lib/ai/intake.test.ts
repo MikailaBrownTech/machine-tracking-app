@@ -17,6 +17,7 @@ const valid = {
   rationale: "Degraded but running.",
   low_detail: false,
   questions: [] as string[],
+  suggested_steps: ["Check the belt tension.", "Replace if worn."],
 };
 
 const input = {
@@ -87,17 +88,41 @@ describe("parseDraft", () => {
   it("rejects more than 3 questions or a question over 120 chars", () => {
     const four = ["a", "b", "c", "d"];
     expect(
-      parseDraft(JSON.stringify({ ...valid, low_detail: true, questions: four })),
+      parseDraft(
+        JSON.stringify({ ...valid, low_detail: true, questions: four }),
+      ),
     ).toBeNull();
     expect(
-      parseDraft(
-        JSON.stringify({ ...valid, questions: ["q".repeat(121)] }),
-      ),
+      parseDraft(JSON.stringify({ ...valid, questions: ["q".repeat(121)] })),
     ).toBeNull();
   });
 
-  it("requires low_detail and questions", () => {
-    for (const key of ["low_detail", "questions"]) {
+  it("accepts up to 5 steps and an empty array", () => {
+    const five = ["a", "b", "c", "d", "e"];
+    expect(
+      parseDraft(JSON.stringify({ ...valid, suggested_steps: five })),
+    ).not.toBeNull();
+    expect(
+      parseDraft(JSON.stringify({ ...valid, suggested_steps: [] })),
+    ).not.toBeNull();
+  });
+
+  it("rejects more than 5 steps, an empty step or one over 160 chars", () => {
+    const six = ["a", "b", "c", "d", "e", "f"];
+    for (const suggested_steps of [six, [""], ["s".repeat(161)]]) {
+      expect(
+        parseDraft(JSON.stringify({ ...valid, suggested_steps })),
+      ).toBeNull();
+    }
+    expect(
+      parseDraft(
+        JSON.stringify({ ...valid, suggested_steps: ["s".repeat(160)] }),
+      ),
+    ).not.toBeNull();
+  });
+
+  it("requires low_detail, questions and suggested_steps", () => {
+    for (const key of ["low_detail", "questions", "suggested_steps"]) {
       const rest = Object.fromEntries(
         Object.entries(valid).filter(([k]) => k !== key),
       );

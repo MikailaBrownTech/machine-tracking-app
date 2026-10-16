@@ -14,6 +14,7 @@ export const intakeDraftSchema = createWorkOrderSchema
     rationale: z.string().trim().max(300),
     low_detail: z.boolean(),
     questions: z.array(z.string().trim().min(1).max(120)).max(3),
+    suggested_steps: z.array(z.string().trim().min(1).max(160)).max(5),
   })
   .strict();
 export type IntakeDraft = z.infer<typeof intakeDraftSchema>;
