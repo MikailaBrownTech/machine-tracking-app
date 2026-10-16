@@ -91,6 +91,12 @@ export async function draftWorkOrder(
     })
     .returning({ id: aiDrafts.id });
 
-  if (!result.ok) return { ok: false, error: FAILED };
+  if (!result.ok) {
+    // One line per failure: no key, note or headers.
+    console.error(
+      `[ai-draft] outcome=${result.reason} ${result.detail} latency_ms=${latencyMs}`,
+    );
+    return { ok: false, error: FAILED };
+  }
   return { ok: true, draftId: row.id, draft: result.draft };
 }

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { workOrderPriority } from "../../db/schema";
+import { createWorkOrderSchema } from "../validation/work-order";
+import { composeDescription } from "./compose";
 import {
   draftIntake,
   intakeDraftSchema,
@@ -52,27 +54,55 @@ describe("parseDraft", () => {
     expect(parseDraft(JSON.stringify(rest))).toBeNull();
   });
 
-  it("rejects a blank or too long title", () => {
+  it("rejects a blank title but clamps a too long one", () => {
     expect(parseDraft(JSON.stringify({ ...valid, title: "  " }))).toBeNull();
-    expect(
-      parseDraft(JSON.stringify({ ...valid, title: "t".repeat(201) })),
-    ).toBeNull();
+    const draft = parseDraft(
+      JSON.stringify({ ...valid, title: "t".repeat(201) }),
+    );
+    expect(draft?.title).toHaveLength(200);
   });
 
   it("rejects an empty title", () => {
     expect(parseDraft(JSON.stringify({ ...valid, title: "" }))).toBeNull();
   });
 
-  it("rejects an empty or too long description", () => {
+  it("rejects an empty description but clamps a too long one", () => {
     expect(
       parseDraft(JSON.stringify({ ...valid, description: " " })),
     ).toBeNull();
+    const draft = parseDraft(
+      JSON.stringify({ ...valid, description: "d".repeat(501) }),
+    );
+    expect(draft?.description).toHaveLength(500);
+  });
+
+  it("cuts long text at the last sentence, else the last word", () => {
+    const sentences = `${"First sentence here. ".repeat(30)}`;
+    const a = parseDraft(JSON.stringify({ ...valid, description: sentences }));
+    expect(a?.description.length).toBeLessThanOrEqual(500);
+    expect(a?.description.endsWith(".")).toBe(true);
+    const words = "word ".repeat(200);
+    const b = parseDraft(JSON.stringify({ ...valid, description: words }));
+    expect(b?.description.endsWith("word")).toBe(true);
+  });
+
+  it("clamps the composed description to the final limit", () => {
+    const draft = parseDraft(
+      JSON.stringify({
+        ...valid,
+        description: "d ".repeat(600),
+        suggested_steps: Array.from({ length: 9 }, () => "s ".repeat(200)),
+      }),
+    );
+    expect(draft).not.toBeNull();
+    const text = composeDescription(draft!.description, draft!.suggested_steps);
     expect(
-      parseDraft(JSON.stringify({ ...valid, description: "d".repeat(501) })),
-    ).toBeNull();
-    expect(
-      parseDraft(JSON.stringify({ ...valid, description: "d".repeat(500) })),
-    ).not.toBeNull();
+      createWorkOrderSchema.safeParse({
+        title: draft!.title,
+        description: text,
+        priority: draft!.priority,
+      }).success,
+    ).toBe(true);
   });
 
   it("accepts low_detail with questions", () => {
@@ -84,16 +114,16 @@ describe("parseDraft", () => {
     expect(parseDraft(JSON.stringify(draft))).toEqual(draft);
   });
 
-  it("rejects more than 3 questions or a question over 120 chars", () => {
+  it("drops questions beyond 3 and clamps one over 120 chars", () => {
     const four = ["a", "b", "c", "d"];
-    expect(
-      parseDraft(
-        JSON.stringify({ ...valid, low_detail: true, questions: four }),
-      ),
-    ).toBeNull();
-    expect(
-      parseDraft(JSON.stringify({ ...valid, questions: ["q".repeat(121)] })),
-    ).toBeNull();
+    const draft = parseDraft(
+      JSON.stringify({ ...valid, low_detail: true, questions: four }),
+    );
+    expect(draft?.questions).toEqual(["a", "b", "c"]);
+    const long = parseDraft(
+      JSON.stringify({ ...valid, questions: ["q".repeat(121)] }),
+    );
+    expect(long?.questions[0]).toHaveLength(120);
   });
 
   it("accepts up to 5 steps and an empty array", () => {
@@ -106,18 +136,20 @@ describe("parseDraft", () => {
     ).not.toBeNull();
   });
 
-  it("rejects more than 5 steps, an empty step or one over 160 chars", () => {
+  it("drops steps beyond 5, drops empty steps and clamps one over 160 chars", () => {
     const six = ["a", "b", "c", "d", "e", "f"];
-    for (const suggested_steps of [six, [""], ["s".repeat(161)]]) {
-      expect(
-        parseDraft(JSON.stringify({ ...valid, suggested_steps })),
-      ).toBeNull();
-    }
     expect(
-      parseDraft(
-        JSON.stringify({ ...valid, suggested_steps: ["s".repeat(160)] }),
-      ),
-    ).not.toBeNull();
+      parseDraft(JSON.stringify({ ...valid, suggested_steps: six }))
+        ?.suggested_steps,
+    ).toEqual(["a", "b", "c", "d", "e"]);
+    expect(
+      parseDraft(JSON.stringify({ ...valid, suggested_steps: ["", "a"] }))
+        ?.suggested_steps,
+    ).toEqual(["a"]);
+    const long = parseDraft(
+      JSON.stringify({ ...valid, suggested_steps: ["s".repeat(161)] }),
+    );
+    expect(long?.suggested_steps[0]).toHaveLength(160);
   });
 
   it("requires low_detail, questions and suggested_steps", () => {
@@ -182,6 +214,33 @@ describe("draftIntake", () => {
   it("returns error when the completer throws", async () => {
     const result = await run(new Error("network"));
     expect(result).toMatchObject({ ok: false, reason: "error" });
+  });
+
+  it("logs status and type for API errors without leaking a key", async () => {
+    const apiError = Object.assign(
+      new Error("400 bad sk-ant-secret123 schema"),
+      {
+        status: 400,
+        error: { error: { type: "invalid_request_error" } },
+      },
+    );
+    const result = await run(apiError);
+    expect(result).toMatchObject({ ok: false, reason: "error" });
+    if (!result.ok) {
+      expect(result.detail).toContain("status=400");
+      expect(result.detail).toContain("type=invalid_request_error");
+      expect(result.detail).not.toContain("secret123");
+    }
+  });
+
+  it("succeeds with a clamped draft when fields are over-long", async () => {
+    const text = JSON.stringify({
+      ...valid,
+      description: "d ".repeat(400),
+      suggested_steps: Array.from({ length: 8 }, () => "s ".repeat(100)),
+    });
+    const result = await run(completion({ text }));
+    expect(result.ok).toBe(true);
   });
 
   it("passes the system prompt and delimited note to the completer", async () => {
