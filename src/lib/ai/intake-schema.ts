@@ -10,14 +10,31 @@ export const intakeJsonSchema = {
     },
     description: {
       type: "string",
-      description: "Plain text: observation, what to check or do, unknowns",
+      description:
+        "1-4 short sentences in the technician's voice, restating only the note",
     },
     priority: { type: "string", enum: ["low", "medium", "high"] },
     rationale: {
       type: "string",
       description: "One short sentence explaining the priority",
     },
+    low_detail: {
+      type: "boolean",
+      description: "True if the note lacks a concrete symptom, part or action",
+    },
+    questions: {
+      type: "array",
+      items: { type: "string" },
+      description: "Up to 3 short questions; empty when low_detail is false",
+    },
   },
-  required: ["title", "description", "priority", "rationale"],
+  required: [
+    "title",
+    "description",
+    "priority",
+    "rationale",
+    "low_detail",
+    "questions",
+  ],
   additionalProperties: false,
 } as const;

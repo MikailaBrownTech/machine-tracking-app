@@ -15,6 +15,8 @@ const valid = {
   description: "Belt squeals under load.\n\nUnknowns: belt size.",
   priority: "medium",
   rationale: "Degraded but running.",
+  low_detail: false,
+  questions: [] as string[],
 };
 
 const input = {
@@ -57,10 +59,50 @@ describe("parseDraft", () => {
     ).toBeNull();
   });
 
-  it("rejects a too long description", () => {
+  it("rejects an empty title", () => {
+    expect(parseDraft(JSON.stringify({ ...valid, title: "" }))).toBeNull();
+  });
+
+  it("rejects an empty or too long description", () => {
     expect(
-      parseDraft(JSON.stringify({ ...valid, description: "d".repeat(5001) })),
+      parseDraft(JSON.stringify({ ...valid, description: " " })),
     ).toBeNull();
+    expect(
+      parseDraft(JSON.stringify({ ...valid, description: "d".repeat(501) })),
+    ).toBeNull();
+    expect(
+      parseDraft(JSON.stringify({ ...valid, description: "d".repeat(500) })),
+    ).not.toBeNull();
+  });
+
+  it("accepts low_detail with questions", () => {
+    const draft = {
+      ...valid,
+      low_detail: true,
+      questions: ["Which part is pressing?", "Since when?"],
+    };
+    expect(parseDraft(JSON.stringify(draft))).toEqual(draft);
+  });
+
+  it("rejects more than 3 questions or a question over 120 chars", () => {
+    const four = ["a", "b", "c", "d"];
+    expect(
+      parseDraft(JSON.stringify({ ...valid, low_detail: true, questions: four })),
+    ).toBeNull();
+    expect(
+      parseDraft(
+        JSON.stringify({ ...valid, questions: ["q".repeat(121)] }),
+      ),
+    ).toBeNull();
+  });
+
+  it("requires low_detail and questions", () => {
+    for (const key of ["low_detail", "questions"]) {
+      const rest = Object.fromEntries(
+        Object.entries(valid).filter(([k]) => k !== key),
+      );
+      expect(parseDraft(JSON.stringify(rest))).toBeNull();
+    }
   });
 
   it("rejects extra keys", () => {

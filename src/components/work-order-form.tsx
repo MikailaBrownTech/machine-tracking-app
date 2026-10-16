@@ -19,7 +19,12 @@ const hints = {
 } as const;
 
 type Priority = "low" | "medium" | "high";
-type DraftMeta = { draftId: string; rationale: string };
+type DraftMeta = {
+  draftId: string;
+  rationale: string;
+  lowDetail: boolean;
+  questions: string[];
+};
 
 export function WorkOrderForm({
   action,
@@ -70,6 +75,8 @@ export function WorkOrderForm({
       setDraft({
         draftId: result.draftId,
         rationale: result.draft.rationale,
+        lowDetail: result.draft.low_detail,
+        questions: result.draft.questions,
       });
     });
   }
@@ -140,6 +147,20 @@ export function WorkOrderForm({
               )}
             </p>
           </div>
+          {draft?.lowDetail && (
+            <div className="rounded-lg border border-amber-500/50 bg-amber-50 p-3 text-base text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+              <p className="font-semibold">
+                Short note, so this draft is minimal. Adding detail helps:
+              </p>
+              {draft.questions.length > 0 && (
+                <ul className="mt-1 list-disc pl-5">
+                  {draft.questions.map((q) => (
+                    <li key={q}>{q}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           {draft && (
             <div className="flex flex-col gap-2 rounded-lg border border-progress/40 bg-progress-soft p-3 text-progress-ink">
               <p className="text-base font-semibold">

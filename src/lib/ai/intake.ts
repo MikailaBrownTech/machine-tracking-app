@@ -9,7 +9,12 @@ import {
 
 // The draft must satisfy the same constraints as a saved work order.
 export const intakeDraftSchema = createWorkOrderSchema
-  .extend({ rationale: z.string().trim().max(300) })
+  .extend({
+    description: z.string().trim().min(1).max(500),
+    rationale: z.string().trim().max(300),
+    low_detail: z.boolean(),
+    questions: z.array(z.string().trim().min(1).max(120)).max(3),
+  })
   .strict();
 export type IntakeDraft = z.infer<typeof intakeDraftSchema>;
 
