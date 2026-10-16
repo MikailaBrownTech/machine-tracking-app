@@ -111,7 +111,7 @@ export function WorkOrderForm({
           <Field
             label="What's wrong?"
             id="ai-note"
-            hint="Your note and the asset's name, type, location and recent work order titles are sent to an AI service to draft this."
+            hint="Your note and the asset's name, type and location are sent to an AI service to draft this."
           >
             <Textarea
               id="ai-note"

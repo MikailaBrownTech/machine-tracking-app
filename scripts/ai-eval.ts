@@ -10,7 +10,7 @@ const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
 const model = process.env.AI_MODEL || "claude-haiku-5-5";
 
-// Asset names carry no digits so the digit check only compares with the note.
+// Digits are allowed only if they appear in the note or the asset name.
 const asset = { name: "Hydraulic Press", type: "Press", location: "Bay B" };
 
 const samples: {
@@ -80,7 +80,14 @@ const samples: {
 ];
 
 const ISOLATE = /lockout|lock out|tagout|isolat|de-?energi/i;
-const BANNED = [/the note/i, /asset context/i, /technician/i];
+const BANNED = [
+  /the note/i,
+  /asset context/i,
+  /technician/i,
+  /observation/i,
+  /unknowns/i,
+  /check:/i,
+];
 
 function digitsOf(text: string): string[] {
   return text.match(/\d+/g) ?? [];
@@ -105,7 +112,7 @@ async function main(): Promise<void> {
 
   for (const [i, s] of samples.entries()) {
     const result = await draftIntake(
-      { note: s.note, asset, recent: [] },
+      { note: s.note, asset },
       complete,
     );
     if (!result.ok) {
@@ -124,7 +131,7 @@ async function main(): Promise<void> {
       continue;
     }
     const { draft } = result;
-    const noteDigits = new Set(digitsOf(s.note));
+    const noteDigits = new Set(digitsOf(`${s.note} ${asset.name}`));
     const invented = digitsOf(`${draft.title} ${draft.description}`).filter(
       (d) => !noteDigits.has(d),
     );

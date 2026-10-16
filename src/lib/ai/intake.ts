@@ -4,7 +4,6 @@ import {
   buildUserMessage,
   SYSTEM_PROMPT,
   type IntakeAsset,
-  type RecentWorkOrder,
 } from "./intake-prompt.ts";
 
 // The draft must satisfy the same constraints as a saved work order.
@@ -54,7 +53,7 @@ export function parseDraft(text: string): IntakeDraft | null {
 }
 
 export async function draftIntake(
-  input: { note: string; asset: IntakeAsset; recent: RecentWorkOrder[] },
+  input: { note: string; asset: IntakeAsset },
   complete: Complete,
 ): Promise<IntakeResult> {
   let completion: Completion;

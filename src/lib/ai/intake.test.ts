@@ -12,7 +12,7 @@ import { canDraft } from "./rate-limit";
 
 const valid = {
   title: "Replace squealing belt",
-  description: "Belt squeals under load.\n\nUnknowns: belt size.",
+  description: "Belt squeals under load. No further detail provided.",
   priority: "medium",
   rationale: "Degraded but running.",
   low_detail: false,
@@ -23,7 +23,6 @@ const valid = {
 const input = {
   note: "belt squeals",
   asset: { name: "Mill", type: "CNC", location: "Bay A" },
-  recent: [],
 };
 
 function completion(over: Partial<Completion>): Completion {

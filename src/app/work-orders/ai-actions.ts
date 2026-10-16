@@ -4,7 +4,6 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { getAsset } from "@/db/queries/assets";
-import { listWorkOrdersForAsset } from "@/db/queries/work-orders";
 import { aiDrafts } from "@/db/schema";
 import { env } from "@/env";
 import { createAnthropicCompleter } from "@/lib/ai/anthropic";
@@ -67,16 +66,11 @@ export async function draftWorkOrder(
     };
   }
 
-  const recent = (await listWorkOrdersForAsset(asset.id))
-    .slice(0, 3)
-    .map((wo) => ({ title: wo.title, status: wo.status }));
-
   const started = Date.now();
   const result = await draftIntake(
     {
       note: parsed.data.note,
       asset: { name: asset.name, type: asset.type, location: asset.location },
-      recent,
     },
     createAnthropicCompleter({ apiKey, model: env.AI_MODEL }),
   );
